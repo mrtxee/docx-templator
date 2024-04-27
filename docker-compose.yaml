@@ -1,0 +1,23 @@
+version: '3'
+
+services:
+
+  docx-template-postgresql:
+    image: docker-registry.fitdev.ru:15500/docker-io/postgres:13
+    ports:
+      - "5431:5432"
+    environment:
+      POSTGRES_DB: docx_template
+      POSTGRES_USER: docx_template
+      POSTGRES_PASSWORD: docx_template
+
+  docx-template-app:
+    build: target
+    depends_on:
+      - docx-template-postgresql
+    ports:
+      - "8099:8099"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://docx-template-postgresql:5432/docx_template
+      SPRING_DATASOURCE_USERNAME: docx_template
+      SPRING_DATASOURCE_PASSWORD: docx_template

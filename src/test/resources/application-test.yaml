@@ -1,0 +1,14 @@
+# ===================================================================
+# Spring Boot configuration for the "test" profile.
+# ===================================================================
+logging:
+  level:
+    ROOT: INFO
+    ru.sv: DEBUG
+    ru.fabit.docxtemplate: DEBUG
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5431/docx_template
+    username: docx_template
+    password: docx_template

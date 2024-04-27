@@ -1,0 +1,453 @@
+openapi: 3.0.1
+info:
+  title: API сервиса шаблонов
+  description: API сервиса шаблонов
+  version: v1r1
+servers:
+  - url: /
+  - url: http://localhost:8099/
+tags:
+  - name: Templates
+    description: Шаблоны документов
+  - name: GeneratePdf
+    description: Генерация PDF по шаблону
+paths:
+  /api/templates:
+    get:
+      tags:
+        - Templates
+      description: Поиск шаблонов
+      operationId: getTemplates
+      parameters:
+        - in: query
+          required: false
+          name: "tags"
+          description: | 
+            Теги шаблонов. 
+            Шаблон возвращается, если хотя бы один из переданных тегов фильтра есть у шаблона
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+          example: ['ап', 'lawn', 'газон']
+        - in: query
+          name: "isLastVersion"
+          description: Искать шаблоны только последней версии
+          schema:
+            type: boolean
+          allowEmptyValue: false
+      responses:
+        '200':
+          description: Список найденных шаблонов
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemplateResponse'
+
+    post:
+      tags:
+        - Templates
+      description: Создание нового шаблона
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Шаблон успешно создан
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/templates/{templateName}/pdf:
+    post:
+      tags:
+        - GeneratePdf
+      description: Создание pdf-документа по шаблону
+      operationId: generatePdfByTemplate
+      parameters:
+        - description: Имя шаблона
+          name: templateName
+          in: path
+          schema:
+            type: string
+          required: true
+          example: lawnReclamation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePdfForTemplateRequest'
+      responses:
+        '200':
+          description: Файл успешно создан
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/templates/{templateName}/{templateVersion}/pdf:
+    post:
+      tags:
+        - GeneratePdf
+      description: Создание pdf-документа по шаблону определенной версии
+      operationId: generatePdfByTemplateVersion
+      parameters:
+        - description: Имя шаблона
+          name: templateName
+          in: path
+          schema:
+            type: string
+          required: true
+          example: lawnReclamation
+        - description: Версия шаблона
+          name: templateVersion
+          in: path
+          schema:
+            type: string
+          required: true
+          example: 3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePdfForTemplateRequest'
+      responses:
+        '200':
+          description: Файл успешно создан
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/templates/{templateName}/{templateVersion}/file:
+    get:
+      tags:
+        - Templates
+      description: Получение docx-файла шаблона определенной версии
+      operationId: getTemplateVersionFile
+      parameters:
+        - description: Имя шаблона
+          name: templateName
+          in: path
+          schema:
+            type: string
+          required: true
+          example: lawnReclamation
+        - description: Версия шаблона
+          name: templateVersion
+          in: path
+          schema:
+            type: string
+          required: true
+          example: 3
+      responses:
+        '200':
+          description: Файл скачан
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/templates/{templateName}:
+    get:
+      tags:
+        - Templates
+      description: Получение информации по шаблону
+      operationId: getTemplate
+      parameters:
+        - description: Имя шаблона
+          name: templateName
+          in: path
+          schema:
+            type: string
+          required: true
+          example: lawnReclamation
+      responses:
+        '200':
+          description: Информация о шаблоне
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/templates/{templateName}/{templateVersion}:
+    get:
+      tags:
+        - Templates
+      description: Получение информации по шаблону
+      operationId: getTemplateVersion
+      parameters:
+        - description: Имя шаблона
+          name: templateName
+          in: path
+          schema:
+            type: string
+          required: true
+          example: lawnReclamation
+        - description: Версия шаблона
+          name: templateVersion
+          in: path
+          schema:
+            type: string
+          required: true
+          example: 3
+      responses:
+        '200':
+          description: Информация о шаблоне
+          content:
+            "application/json":
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Номер страницы
+      required: false
+      example: 13
+      schema:
+        type: integer
+        format: int32
+    Size:
+      name: size
+      in: query
+      description: Максимальное количество данных для загрузки одной страницы
+      required: false
+      example: 20
+      schema:
+        type: integer
+        format: int32
+
+  schemas:
+    CreateTemplateRequest:
+      description: Метаданные для создания шаблона
+      required:
+        - name
+        - templateTags
+      properties:
+        name:
+          description: Уникальное имя шаблона
+          type: string
+          example: lawnReclamation
+        templateTags:
+          type: array
+          example: ['АП', 'lawn', 'газон']
+          items:
+            $ref: '#/components/schemas/TemplateTag'
+        templateFile:
+          description: docx-файл в base64, если файл не передан, будет сохранен файл-заглушка
+          type: string
+          example: "UEsDBBQABgAIAAAAIQDkJIlMfQEAACkGAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIooAACAAAAAAAAAAAAAAAAAAAAAA"
+
+    TemplateTag:
+      description: Тег для шаблона
+      type: string
+
+    CreatePdfForTemplateRequest:
+      description: Метаданные для создания pdf-файла по шаблону
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagAndValueRequest'
+      example: |
+        {
+          "data": [
+            {
+              "name": "АдресНарушения",
+              "value": "г. Пермь, ул. Тюлень, д. 32"
+            },
+            {
+              "name": "@ШПИ",
+              "value": "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"
+            },
+          ]
+        }
+
+    TagAndValueRequest:
+      description: Название тега и данные для него
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          description: |
+            Название тега (без фигурных скобок)
+            Когда тег начинается с @, то в value ожидается base64 содержимое с изображением
+          type: string
+          example: "АдресНарушения"
+        value:
+          description: Данные для тега
+          type: string
+          example: "г. Пермь, ул. Тюлень, д. 32"
+
+    TemplateResponse:
+      description: Данные по шаблону
+      type: object
+      properties:
+        name:
+          description: Название/имя шаблона
+          type: string
+          example: "lawnReclamation"
+        version:
+          description: Версия шаблона
+          type: integer
+          example: 4
+        lastVersion:
+          description: Последняя ли версия шаблона
+          type: boolean
+        templateTags:
+          description: Теги шаблона
+          type: array
+          items:
+            type: string
+          example: [ "lawn", "АП", "reclamation" ]
+        createdDate:
+          description: Дата создания шаблона
+          type: string
+          format: 'date-time'
+          example: "2023-06-10T10:10:10.000Z"
+
+    Problem:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: >
+            URN, однозначно идентифицирующая тип проблемы.
+            В отличие от спецификации RFC-7807, не требуется
+            разыменование и указать на удобочитаемую документацию для
+            тип проблемы, например с помощью HTML. 
+            Может использоваться frontend для интернационализации.
+          default: 'about:blank'
+          example: 'urn:problem-type:connection-error'
+        title:
+          type: string
+          description: >
+            Краткое описание типа проблемы. Написано по-английски и читабельно
+            для инженеров, обычно не подходит для нетехнических заинтересованных сторон и
+            не локализовано.
+          example: Service Unavailable
+        status:
+          type: integer
+          format: int32
+          description: >
+            Код состояния HTTP, сгенерированный исходным сервером для данной проблемы.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 503
+        detail:
+          type: string
+          description: >
+            Удобочитаемое объяснение проблемы, относящееся к этому случаю.
+            Написано на английском и понятно для инженеров, обычно не подходит
+            для нетехнических заинтересованных сторон и не локализован.
+          example: Connection to database timed out
+        instance:
+          type: string
+          format: uri
+          description: >
+            Идентифицирует конкретную проблему. Может использоваться для поиска проблемы логах.
+          example: 'urn:uuid:9f7f58b5-fd45-48d3-a571-a8f2ca63832b'
+
+  responses:
+    NotFound:
+      description: Ошибка клиента в параметрах запроса. Ресурс не найден.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example: |
+            {
+            "type": "urn:problem-type:not-found",
+            "title": "Not Found",
+            "status": 404,
+            "detail": "Template not found",
+            "instance": "urn:uuid:9f7f58b5-fd45-48d3-a571-a8f2ca63832b"
+            }
+    BadRequest:
+      description: Ошибка клиента в параметрах запроса. Запрос не следует повторять
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example: |
+            {
+            "type": "urn:problem-type:bad-request#not-valid-file-type",
+            "title": "Bad request",
+            "status": 400,
+            "detail": "Template file must be docx format",
+            "instance": "urn:uuid:9f7f58b5-fd45-48d3-a571-a8f2ca63832b"
+            }
+    UnprocessableEntity:
+      description: Запрашиваемое действие недоступно в текущем состоянии. Запрос не следует повторять
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example: |
+            {
+            "type": "urn:problem-type:business-rules#smth",
+            "title": "Unprocessable entity",
+            "status": 422,
+            "detail": "Can't do smth prosto potomu chto",
+            "instance": "urn:uuid:9f7f58b5-fd45-48d3-a571-a8f2ca63832b"
+            }
+    InternalServerError:
+      description: Ошибка сервера при выполнении запроса. Запрос следует повторить позднее
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example: |
+            {
+              "type": "urn:problem-type:connection-error",
+              "title": "Service Unavailable",
+              "status": 500,
+              "detail": "Connection to database timed out",
+              "instance": "urn:uuid:bf188e6b-3b3b-4f1b-9043-4582fd0a19e5"
+            }

@@ -1,0 +1,75 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+  <changeSet author="moiseev" id="10_10_2023-1">
+
+    <createSequence sequenceName="files_id_seq" startValue="1" incrementBy="1"/>
+    <createSequence sequenceName="templates_id_seq" startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet author="moiseev" id="10_10_2023-2">
+
+    <createTable tableName="files_" remarks="Файлы шаблонов">
+
+      <column name="id" remarks="ID" type="bigint">
+        <constraints primaryKey="true" primaryKeyName="files"/>
+      </column>
+
+      <column name="data" type="blob">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="created_date" remarks="Дата время создание записи" type="datetime"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet author="moiseev" id="10_10_2023-3">
+
+    <createTable tableName="templates" remarks="Данные по шаблонам">
+
+      <column name="id" remarks="ID" type="bigint">
+        <constraints primaryKey="true" primaryKeyName="pk_templates"/>
+      </column>
+
+      <column name="name" remarks="Имя шаблона" type="varchar(100)">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="version" remarks="Версия шаблона" type="int">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="last_version" remarks="Последняя ли версия шаблона" type="boolean">
+        <constraints nullable="false"/>
+      </column>
+
+      <column name="template_tags" remarks="Теги по шаблону" type="text[]"/>
+
+      <column name="file_id" type="bigint" remarks="ID файла с шаблоном">
+        <constraints nullable="false" references="files_(id)" foreignKeyName="templates_files_fk"/>
+      </column>
+
+      <column name="created_date" remarks="Дата время создание записи" type="datetime"/>
+    </createTable>
+
+    <addUniqueConstraint columnNames="name, version"
+                         constraintName="uniq_templates_name_version"
+                         tableName="templates"/>
+  </changeSet>
+
+  <changeSet author="surovtsev" id="13_11_2023-4">
+
+    <createIndex tableName="templates" indexName="idx_templates_last_version_created_date">
+      <column name="last_version"/>
+      <column name="created_date" descending="true" />
+    </createIndex>
+
+  </changeSet>
+
+  <changeSet author="surovtsev" id="13_11_2023-5">
+    <sql>CREATE INDEX idx_templates_template_tags ON templates USING GIN(template_tags)</sql>
+  </changeSet>
+
+</databaseChangeLog>

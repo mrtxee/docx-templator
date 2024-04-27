@@ -1,0 +1,108 @@
+logging:
+  level:
+    org.apache.fop: ERROR
+    org.docx4j: ERROR
+
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+  port: 8099
+
+spring:
+  datasource:
+    url:
+    username:
+    password:
+  jpa:
+    generate-ddl: false
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      org:
+        hibernate:
+          flushMode: ALWAYS
+      hibernate:
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+        id:
+          optimizer:
+            pooled:
+              preferred: none
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+  liquibase:
+    change-log: classpath:/liquibase/db.changelog-master.xml
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    enabled: true
+
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+# ======================================================================================================================
+# Spring Boot настройки метрик
+# ======================================================================================================================
+management:
+  endpoints:
+    web:
+      base-path: "/"
+      exposure:
+        include: [ "health", "metrics", "prometheus", "configprops", "env", "info", "threaddump" ]
+      path-mapping:
+        health: "system/health"
+        metrics: "metrics-list"
+        prometheus: "metrics"
+        configprops: "management/configprops"
+        env: "management/env"
+        info: "management/info"
+        threaddump: "management/threaddump"
+  endpoint:
+    health:
+      show-details: when_authorized
+      roles: 'ROLE_ADMIN'
+      group:
+        ready:
+          include: '*'
+        live:
+          include: 'ping'
+  info:
+    git:
+      mode: full
+  health:
+    mail:
+      enabled: false  # When using the MailService, configure an SMTP server and set this to true
+  metrics:
+    enable:
+      http: true
+      jvm: true
+      logback: true
+      process: true
+      system: true
+    distribution:
+      percentiles-histogram:
+        all: true
+      percentiles:
+        all: 0, 0.5, 0.75, 0.95, 0.99, 1.0
+    tags:
+      application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+
+app:
+  # Настройки либраофиса
+  office:
+    # Путь к приложению (можно оставить пустым)
+    #    home-path: /usr/lib/libreoffice
+    home-path: c:\Program Files\LibreOffice\

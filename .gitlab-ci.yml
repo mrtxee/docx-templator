@@ -1,0 +1,127 @@
+image: docker-registry.fitdev.ru:15500/docker-io/maven:3-openjdk-17-slim
+
+variables:
+  # This will supress any download for dependencies and plugins or upload messages which would clutter the console log.
+  # `showDateTime` will show the passed time in milliseconds. You need to specify `--batch-mode` to make this work.
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
+  # As of Maven 3.3.0 instead of this you may define these options in `.mvn/maven.config` so the same config is used
+  # when running from the command line.
+  # `installAtEnd` and `deployAtEnd` are only effective with recent version of the corresponding plugins.
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version -DinstallAtEnd=true -DdeployAtEnd=true"
+  IMAGE_NAME: "${CI_PROJECT_NAME}"
+
+# Cache downloaded dependencies and plugins between builds.
+# To keep cache across branches add 'key: "$CI_JOB_REF_NAME"'
+cache:
+  key: "$CI_BUILD_REF_NAME"
+  paths:
+    - node_modules
+    - .maven
+
+stages:
+  - validate
+  - package-test
+  - release
+
+before_script:
+  - export MAVEN_USER_HOME=`pwd`/.maven
+  - chmod +x mvnw
+  - export IMAGE_NAME=$CI_PROJECT_NAME-backend
+  - export JAVA_OPTS=-XX:-UseGCOverheadLimit
+
+maven-validate:
+  stage: validate
+  image: docker-registry.fitdev.ru:15650/fabit/eclipse-temurin-jammy-jdk-office:17.0.8.1_1
+  script:
+    - ./mvnw -s ./.mvn/settings.xml validate -Dmaven.repo.local=$MAVEN_USER_HOME
+
+maven-package-test:
+  stage: package-test
+  image: docker-registry.fitdev.ru:15650/fabit/eclipse-temurin-jammy-jdk-office:17.0.8.1_1
+  services:
+    - name: docker:20.10.12-dind
+      # explicitly disable tls to avoid docker startup interruption
+      command: [ "--tls=false" ]
+  variables:
+    # Instruct Testcontainers to use the daemon of DinD, use port 2375 for non-tls connections.
+    DOCKER_HOST: "tcp://docker:2375"
+    # Instruct Docker not to start over TLS.
+    DOCKER_TLS_CERTDIR: ""
+    # Improve performance with overlayfs.
+    DOCKER_DRIVER: overlay2
+  script:
+    - ./mvnw -s ./.mvn/settings.xml verify -Dmaven.repo.local=$MAVEN_USER_HOME
+  artifacts:
+    paths:
+      - target/*.jar
+      - target/*.sh
+      - target/Dockerfile
+      - target/java.security
+    expire_in: 1 hour
+
+.release-version-template-1: &release-version-template
+  image: docker-registry.fitdev.ru:15650/fabit/ci-tools-semantic-release:1.10.0
+  stage: release
+  script:
+    - semantic-release --skip-maven-deploy
+
+release-version:
+  <<: *release-version-template
+  only:
+    - /^[0-9]+.[0-9].x$/
+    - /^sprint.*$/
+    - /^dev$/
+  when: manual
+
+auto-release-version:
+  <<: *release-version-template
+  only:
+    - master
+
+.build-docker-image-template-1: &build-docker-image-template
+  stage: release
+  image: docker-registry.fitdev.ru:15500/docker-io/docker:20.10.12
+  services:
+    - docker:20.10.12-dind
+  before_script:
+    - mkdir -p ~/.docker
+    - echo $DOCKER_AUTH_CONFIG > ~/.docker/config.json
+  script:
+    - echo $DOCKER_REGISTRY_URL
+#    - docker login -u $DOCKER_REGISTRY_USER -p $DOCKER_REGISTRY_PASSWORD $DOCKER_REGISTRY_URL
+    - docker build -f ./target/Dockerfile -t $IMAGE_NAME:$VERSION ./target
+    - docker tag $IMAGE_NAME:$VERSION $DOCKER_REGISTRY_URL/fabit/$IMAGE_NAME:$VERSION
+    - docker push $DOCKER_REGISTRY_URL/fabit/$IMAGE_NAME:$VERSION
+
+# build image:latest for master
+build-docker-image-latest:
+  <<: *build-docker-image-template
+  variables:
+    VERSION: "latest_${CI_COMMIT_SHA}"
+  only:
+    - master
+
+#build image:version for tag
+build-docker-image-version:
+  <<: *build-docker-image-template
+  variables:
+    VERSION: "$CI_COMMIT_TAG"
+  only:
+    - tags
+
+#build image:version for task branches
+build-docker-image-branch:
+  <<: *build-docker-image-template
+  variables:
+    VERSION: "branch_${CI_COMMIT_BRANCH}_${CI_COMMIT_SHA}"
+  only:
+    - /^[0-9]+_.*$/
+
+#build image:version for sprint branches
+build-docker-image-beta:
+  <<: *build-docker-image-template
+  variables:
+    VERSION: "latest_beta_${CI_COMMIT_SHA}"
+  only:
+    - /^sprint.*$/
+    - /^dev$/

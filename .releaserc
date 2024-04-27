@@ -1,0 +1,28 @@
+{
+    "tagFormat": "${version}",
+    "branches": [
+      '[0-9]+.[0-9]+.x',
+      'master'
+    ],
+    "plugins": ["@semantic-release/commit-analyzer",
+    ["@semantic-release/release-notes-generator", {
+        "config": "conventional-changelog-gorparkovki"
+    }],
+    ["@semantic-release/changelog", {
+        "config": "conventional-changelog-gorparkovki"
+    }],
+    ["@semantic-release/npm", {
+        "npmPublish": false
+    }],
+    ["@semantic-release/exec", {
+        "prepareCmd": "./mvnw -s ./.mvn/settings.xml versions:set -DnewVersion=${nextRelease.version} -DgenerateBackupPoms=false -Dmaven.repo.local=./.maven",
+    }],
+    ["@semantic-release/git", {
+        "assets": ["CHANGELOG.md","package.json", "pom.xml"],
+        "message": "docs(release): release ${nextRelease.version}"
+    }],
+    ["@semantic-release/gitlab", {
+        "gitlabUrl": "https://gitdev.apqa.ru"
+    }]
+]
+}
